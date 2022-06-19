@@ -18,3 +18,7 @@
 ## Installation de l'application
 
 - pip install -r requirements.txt
+
+## Tests en local
+
+- python -m aiosmtpd -n -l localhost:587

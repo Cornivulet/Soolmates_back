@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import User, UserLookingFor, UserProfile
+from .models import User, Message, Match
 
 
 # Serializer for User model
@@ -32,53 +32,54 @@ class UserForCardSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'age', 'description', 'image')
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class UserForDashboardSerializer(serializers.ModelSerializer):
     class Meta:
-        model = UserProfile
-        fields = ('name', 'age', 'gender', 'description', 'image')
-
-    def validate(self, data):
-        if data['age'] <= 18:
-            raise serializers.ValidationError('Age cannot be inferior than 18')
-        return data
-
-    def create(self, validated_data):
-        return UserProfile.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.age = validated_data.get('age', instance.age)
-        instance.gender = validated_data('gender', instance.age)
-        instance.description = validated_data('description', instance.description)
-        instance.image = validated_data('image', instance.description)
-        instance.save()
-        return instance
-
-
-class UserLookingForSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserLookingFor
-        fields = ('lfGender', 'lfAgeFrom', 'lfAgeTo')
-
-    def validate(self, data):
-        if data['lfAgeTo'] < data['lfAgeFrom']:
-            raise serializers.ValidationError("Age to must be greater than age from")
-        return data
-
-    def create(self, validated_data):
-        return UserLookingFor.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        instance.lfGender = validated_data.get('lfGender', instance.lfGender)
-        instance.lfAgeFrom = validated_data.get('lfAgeFrom', instance.lfAgeFrom)
-        instance.lfAgeTo = validated_data.get('lfAgeTo', instance.lfAgeTo)
-        instance.save()
-        return instance
+        model = User
+        fields = ('id', 'name', 'age', 'is_banned')
 
 
 class MeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'name', 'email', 'age', 'gender', 'description', 'image', 'lfGender', 'lfAgeFrom', 'lfAgeTo')
+        fields = (
+            'id', 'name', 'email', 'age', 'gender', 'description', 'image', 'lf_gender', 'lf_age_from',
+            'lf_age_to', 'lf_criteria', 'is_staff', 'is_banned')
+
+    required_fields = ['name', 'email', 'age']
+
+    def validate(self, data):
+        for required_field in self.required_fields:
+            if (not self.partial or required_field in data) and data[required_field] == '':
+                raise serializers.ValidationError(required_field + ' is required')
+
+        if (not self.partial or 'lf_age_to' in data) and data['lf_age_to'] < data['lf_age_from']:
+            raise serializers.ValidationError("Age to must be greater than age from")
+
+        if (not self.partial or 'age' in data) and data['age'] <= 18:
+            raise serializers.ValidationError('Age cannot be inferior than 18')
+        return data
 
 
+class MatchingUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'name', 'email', 'age', 'gender', 'description', 'image', 'lf_gender', 'lf_age_from',
+                  'lf_age_to', 'lf_criteria', 'is_staff')
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'content', 'sender', 'created_at')
+
+
+class MatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Match
+        fields = ('id', 'user_target', 'last_message', 'created_at')
+
+
+class AvatarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('image',)

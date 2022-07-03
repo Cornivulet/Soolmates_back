@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from itertools import chain
+from operator import attrgetter
 from secrets import token_urlsafe
 
 from django.core.mail import send_mail
@@ -13,7 +15,7 @@ from rest_framework.views import APIView
 from Soolmates_back import settings
 from app.models import User, VerificationLink, Like, Report, Message, Match
 from app.serializers import UserSerializer, MeSerializer, MatchingUserSerializer, UserForDashboardSerializer, \
-    MessageSerializer, MatchSerializer, AvatarSerializer
+    MatchSerializer, AvatarSerializer, MessageSerializer
 
 
 # API route to register a new user
@@ -70,7 +72,6 @@ class UpdateView(APIView):
         serializer.save()
         return Response(serializer.data)
 
-    # patch for every field
     def patch(self, request):
         user = request.user
         serializer = MeSerializer(user, data=request.data, partial=True)
@@ -120,14 +121,14 @@ class MatchingUsersView(APIView):
         matching_users = User.objects.filter(
             is_active=True,
             lf_gender__contains=[my_user.gender],
-            lf_age_to__lte=my_user.lf_age_to,
-            lf_age_from__gte=my_user.lf_age_from,
-            lf_criteria__overlap=my_user.lf_criteria,
+            lf_age_to__gte=my_user.age,
+            lf_age_from__lte=my_user.age,
+            # lf_criteria__overlap=my_user.lf_criteria,
             is_banned=False,
         )
         # if the matching user is being liked by the current user, we remove it from the list
         for matching_user in matching_users:
-            if Like.objects.filter(user=matching_user, user_target=my_user).exists():
+            if Like.objects.filter(user=my_user, user_target=matching_user).exists():
                 matching_users = matching_users.exclude(id=matching_user.id)
         # make sure the current user is not in the list
         matching_users = matching_users.exclude(id=my_user.id)
@@ -143,8 +144,21 @@ class LikeView(APIView):
 
     def post(self, request, id):
         me = request.user.id
+        my_user = request.user
         user = User.objects.get(id=id)
+        matching_users = User.objects.filter(
+            is_active=True,
+            lf_gender__contains=[my_user.gender],
+            lf_age_to__gte=my_user.age,
+            lf_age_from__lte=my_user.age,
+            # lf_criteria__overlap=my_user.lf_criteria,
+            is_banned=False,
+        )
+
         if user is None:
+            raise AuthenticationFailed('User not found')
+        # stop the user from liking anyone that is not in the list of matching users
+        if user not in matching_users:
             raise AuthenticationFailed('User not found')
         Like.objects.create(user_id=me, user_target_id=user.id)
         return Response(status=status.HTTP_201_CREATED)
@@ -247,6 +261,8 @@ class ReportView(APIView):
         user = User.objects.filter(id=id).first()
         if user is None:
             raise AuthenticationFailed('User not found')
+        if user is request.user:
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         Report.objects.create(user=user, reason=request.data.get('reason'))
         return Response(status=status.HTTP_200_OK)
 
@@ -258,9 +274,10 @@ class CreateMessageView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, id):
-        user = Match.objects.filter(id=id).first().user.id
-        if user is None:
-            raise AuthenticationFailed('User not found')
+        match = Match.objects.filter(id=id).first()
+        user = request.user
+        if match.user.id != user.id and match.match_user.id != user.id:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         Message.objects.create(sender=user, content=request.data.get('message'))
         return Response(status=status.HTTP_200_OK)
 
@@ -271,8 +288,8 @@ class CreateMessageView(APIView):
 class MatchView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request, match_id):
-        match = Match.objects.filter(id=match_id).first()
+    def get(self, request, id):
+        match = Match.objects.filter(id=id).first()
         if match is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(MatchSerializer(match).data, status=status.HTTP_200_OK)
@@ -280,22 +297,28 @@ class MatchView(APIView):
 
 # API route to get all the messages from a match
 # GET
-# /messages
-# TODO: faire un endpoint pour récupérer les messages d'un match
+# /messages/{id}
 class GetMessagesView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request, match_id):
-        match = Match.objects.filter(id=match_id).first()
+    def get(self, request, id):
+        match = Match.objects.filter(id=id).first()
+        user = request.user
+
+        if match.user.id != user.id and match.match_user.id != user.id:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         if match is None:
             raise AuthenticationFailed('Match not found')
-        messages = Message.objects.filter(match=match)
-        return Response(MessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
+        message_from_me = Message.objects.filter(sender=match.user)
+        message_from_other = Message.objects.filter(sender=match.match_user)
+        messages = sorted(chain(message_from_me, message_from_other), key=attrgetter('created_at'))
+        return Response(MessageSerializer(messages, many=True).data,
+                        status=status.HTTP_200_OK)
 
 
 # API route to get all the matches for a user
 # GET
-# /matches/{id}
+# /matches
 class GetMatchesView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -303,7 +326,9 @@ class GetMatchesView(APIView):
         user = request.user
         if user is None:
             raise AuthenticationFailed('User not found')
-        matches = Match.objects.filter(user=user.id)
+        # get all the matches where the user is the sender or the receiver
+        matches = Match.objects.union(Match.objects.filter(user=user)).order_by('-created_at')
+        # matches = Match.objects.filter(user=user.id)
         return Response(MatchSerializer(matches, many=True).data, status=status.HTTP_200_OK)
 
 
@@ -322,3 +347,23 @@ class UploadAvatarView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# API route to get the last messages from a match
+# GET
+# /last_message/{id}
+class GetLastMessageView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, id):
+        match = Match.objects.filter(id=id).first()
+        user = request.user
+        if match.user.id != user.id and match.match_user.id != user.id:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if match is None:
+            raise AuthenticationFailed('Match not found')
+        message_from_me = Message.objects.filter(sender=match.user)
+        message_from_other = Message.objects.filter(sender=match.match_user)
+        message = sorted(chain(message_from_me, message_from_other), key=attrgetter('created_at'))
+        return Response(MessageSerializer(message, many=True).data,
+                        status=status.HTTP_200_OK)

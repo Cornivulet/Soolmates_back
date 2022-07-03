@@ -39,7 +39,6 @@ class UserProfile(models.Model):
     class Meta:
         abstract = True
 
-    # TODO: fix image placeholder
     name = models.CharField(max_length=100, default='')
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default=MALE)
     age = models.PositiveIntegerField(validators=[MinValueValidator(18)], default=18)
@@ -77,16 +76,20 @@ class User(AbstractUser, UserProfile, UserLookingFor):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class Match(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    match_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='match_user')
-    last_message = models.ForeignKey('Message', on_delete=models.SET_NULL, null=True, blank=True)
+class Message(models.Model):
+    content = models.CharField(max_length=255, default='test')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class Message(models.Model):
-    content = models.TextField()
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sender')
+class Match(models.Model):
+    class Meta:
+        unique_together = ('user', 'match_user')
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    match_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='match_user')
+    # one to many relationship
+    messages = ArrayField(models.CharField(Message, default='testmsg', max_length=255), default=list)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -101,6 +104,9 @@ class VerificationLink(models.Model):
 
 
 class Like(models.Model):
+    class Meta:
+        unique_together = ('user', 'user_target')
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     user_target = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_target')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -119,7 +125,7 @@ def if_both_like_generate_match(instance, created, **kwargs):
         if Like.objects.filter(user=instance.user_target, user_target=instance.user).exists() and Like.objects.filter(
                 user=instance.user, user_target=instance.user_target).exists():
             # create a match
-            Match.objects.create(user=instance.user, match_user=instance.user_target)
+            Match.objects.get_or_create(user=instance.user, match_user=instance.user_target)
 
 
 @receiver(post_save, sender=Match)

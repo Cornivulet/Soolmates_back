@@ -5,8 +5,8 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import RegisterView, UpdateView, DeleteView, MeView, ActivateView, LikeView, BanView, UnbanView, \
-    MatchingUsersView, ReportView, UsersView, GetMessagesView, CreateMessageView, GetMatchesView, ForgotPasswordView, \
-    ResetPasswordView, UploadAvatarView
+    MatchingUsersView, ReportView, UsersView, GetMatchesView, ForgotPasswordView, \
+    ResetPasswordView, UploadAvatarView, MatchView, GetMessagesView, CreateMessageView, GetLastMessageView
 
 router = routers.DefaultRouter()
 
@@ -24,10 +24,12 @@ urlpatterns = [
                   path('matching_users', MatchingUsersView.as_view(), name='matching_users'),
                   path('report/<int:id>', ReportView.as_view(), name='report'),
                   path('users', UsersView.as_view(), name='all_users'),  # get all users except the connected user
-                  path('messages', GetMessagesView.as_view(), name='get_messages'),
+                  path('messages/<int:id>', GetMessagesView.as_view(), name='get_messages'),
                   path('message/<int:id>', CreateMessageView.as_view(), name='create_message'),
                   path('matches', GetMatchesView.as_view(), name='get_matches'),
                   path('forgot_password', ForgotPasswordView.as_view(), name='forgot_password'),
                   path('reset-password/<str:token>', ResetPasswordView.as_view(), name='reset_password'),
                   path('upload_avatar', UploadAvatarView.as_view(), name='upload_avatar'),
+                  path('match/<int:id>', MatchView.as_view(), name='match'),
+                  path('last_message/<int:id>', GetLastMessageView.as_view(), name='last_message'),
               ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

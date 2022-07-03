@@ -21,6 +21,14 @@ class UserSerializer(serializers.ModelSerializer):
         instance = self.Meta.model(**validated_data)
         if password is not None:
             instance.set_password(password)
+        if len(password) < 8:
+            raise serializers.ValidationError("Password must have at least 8 characters")
+        if not any(char.isupper() for char in password):
+            raise serializers.ValidationError("Password must have at least one capital letter")
+        if not any(char.isdigit() for char in password):
+            raise serializers.ValidationError("Password must have at least one number")
+        if not any(char.isalpha() for char in password):
+            raise serializers.ValidationError("Password must have at least one special character")
         instance.save()
         return instance
 
@@ -74,9 +82,18 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    user = MatchingUserSerializer(read_only=True)
+    match_user = MatchingUserSerializer(read_only=True)
+
     class Meta:
         model = Match
-        fields = ('id', 'user_target', 'last_message', 'created_at')
+        fields = ('id', 'user', 'match_user')
+
+    def get_last_message(self, obj: Match):
+        lm = Message.objects.latest('created_at')
+        if lm is None:
+            return []
+        return lm
 
 
 class AvatarSerializer(serializers.ModelSerializer):

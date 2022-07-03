@@ -6,6 +6,5 @@ django-cors-headers
 psycopg2-binary
 Django~=4.0.2
 aiosmtpd
-Faker~=13.3.4
-factory-boy
-fixtures~=3.0.0
+channels~=3.0.5
+channels_redis

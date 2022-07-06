@@ -184,10 +184,9 @@ MEDIA_URL = '/media/'
 # CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
-    'https://soolmates.herokuapp.com'
+    'https://soolmates-front.herokuapp.com'
 ]
-FRONTEND_HOST = 'http://localhost:3000'
-DEPLOYMENT_HOST = 'https://soolmates.herokuapp.com'
+DEPLOYMENT_HOST = 'https://soolmates-front.herokuapp.com'
 
 # Configuration part for sending emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

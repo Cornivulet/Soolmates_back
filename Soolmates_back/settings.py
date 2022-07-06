@@ -81,10 +81,10 @@ WSGI_APPLICATION = 'Soolmates_back.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'soolmates',
-        'USER': 'cornivulet',
-        'PASSWORD': 'C0rn1vulet!',
-        'HOST': '127.0.0.1',
+        'NAME': 'dc0nuqmvn8lm4m',
+        'USER': 'klrqfoeuvnathy',
+        'PASSWORD': 'c50ca85dddd3e9b1e3972dc83235d279b7a1e90010184ec6aedf3768e14f65ea',
+        'HOST': 'ec2-34-248-169-69.eu-west-1.compute.amazonaws.com',
         'PORT': '5432',
         'CREATE_DB': True,
         'DATE_FORMAT': '%d %B %Y',

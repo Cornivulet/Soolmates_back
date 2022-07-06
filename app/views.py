@@ -13,9 +13,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from Soolmates_back import settings
-from app.models import User, VerificationLink, Like, Report, Message, Match
+from app.models import User, VerificationLink, Like, Message, Match
 from app.serializers import UserSerializer, MeSerializer, MatchingUserSerializer, UserForDashboardSerializer, \
-    MatchSerializer, AvatarSerializer, MessageSerializer
+    MatchSerializer, AvatarSerializer, MessageSerializer, LikeSerializer
 
 
 # API route to register a new user
@@ -120,10 +120,10 @@ class MatchingUsersView(APIView):
         my_user = request.user
         matching_users = User.objects.filter(
             is_active=True,
-            lf_gender__contains=[my_user.gender],
+            lf_gender=my_user.gender,
             lf_age_to__gte=my_user.age,
             lf_age_from__lte=my_user.age,
-            # lf_criteria__overlap=my_user.lf_criteria,
+            lf_criteria=my_user.lf_criteria,
             is_banned=False,
         )
         # if the matching user is being liked by the current user, we remove it from the list
@@ -251,22 +251,6 @@ class ResetPasswordView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-# API route to report a user
-# POST
-# /report/{id}
-class ReportView(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request, id):
-        user = User.objects.filter(id=id).first()
-        if user is None:
-            raise AuthenticationFailed('User not found')
-        if user is request.user:
-            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
-        Report.objects.create(user=user, reason=request.data.get('reason'))
-        return Response(status=status.HTTP_200_OK)
-
-
 # API route to post a message
 # POST
 # /message/{id}
@@ -278,7 +262,7 @@ class CreateMessageView(APIView):
         user = request.user
         if match.user.id != user.id and match.match_user.id != user.id:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        Message.objects.create(sender=user, content=request.data.get('message'))
+        Message.objects.create(sender=user, content=request.data.get('message'), match=match)
         return Response(status=status.HTTP_200_OK)
 
 
@@ -327,14 +311,17 @@ class GetMatchesView(APIView):
         if user is None:
             raise AuthenticationFailed('User not found')
         # get all the matches where the user is the sender or the receiver
-        matches = Match.objects.union(Match.objects.filter(user=user)).order_by('-created_at')
-        # matches = Match.objects.filter(user=user.id)
-        return Response(MatchSerializer(matches, many=True).data, status=status.HTTP_200_OK)
+        matches = Match.objects.filter(user=user).union(Match.objects.filter(match_user=user))
+        data = MatchSerializer(matches, many=True).data
+        for match in data:
+            match['last_message'] = MessageSerializer(Message.objects.filter(match=match['id']).order_by('-created_at')
+                                                      .first()).data
+        return Response(data, status=status.HTTP_200_OK)
 
 
 # API route to upload an avatar
 # POST
-# /upload_image
+# /upload_avatar
 class UploadAvatarView(APIView):
     permission_classes = (IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
@@ -349,21 +336,15 @@ class UploadAvatarView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# API route to get the last messages from a match
+# API route to get the likes from a user
 # GET
-# /last_message/{id}
-class GetLastMessageView(APIView):
-    permission_classes = (IsAuthenticated,)
+# /likes
 
-    def get(self, request, id):
-        match = Match.objects.filter(id=id).first()
+class LikesView(APIView):
+    def get(self, request):
         user = request.user
-        if match.user.id != user.id and match.match_user.id != user.id:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        if match is None:
-            raise AuthenticationFailed('Match not found')
-        message_from_me = Message.objects.filter(sender=match.user)
-        message_from_other = Message.objects.filter(sender=match.match_user)
-        message = sorted(chain(message_from_me, message_from_other), key=attrgetter('created_at'))
-        return Response(MessageSerializer(message, many=True).data,
-                        status=status.HTTP_200_OK)
+        if user is None:
+            raise AuthenticationFailed('User not found')
+        # get all the matches where the user is the sender
+        likes = Like.objects.filter(user=user)
+        return Response(LikeSerializer(likes, many=True).data, status=status.HTTP_200_OK)

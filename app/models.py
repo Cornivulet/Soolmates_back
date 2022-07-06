@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.db import models
 from django.db.models.signals import post_save
@@ -55,8 +54,8 @@ class UserLookingFor(models.Model):
 
     lf_age_from = models.IntegerField(null=True, blank=True)
     lf_age_to = models.IntegerField(null=True, blank=True)
-    lf_gender = ArrayField(models.CharField(max_length=1, choices=GENDER_CHOICES, default=MALE), default=list)
-    lf_criteria = ArrayField(models.CharField(max_length=1, choices=CRITERIA_CHOICES, default=UNDECIDED), default=list)
+    lf_gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default=MALE)
+    lf_criteria = models.CharField(max_length=1, choices=CRITERIA_CHOICES, default=UNDECIDED)
     updated_at = models.DateTimeField(auto_now=True)
 
 
@@ -80,6 +79,7 @@ class Message(models.Model):
     content = models.CharField(max_length=255, default='test')
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    match = models.ForeignKey('Match', on_delete=models.CASCADE, related_name='messages')
 
 
 class Match(models.Model):
@@ -88,8 +88,6 @@ class Match(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     match_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='match_user')
-    # one to many relationship
-    messages = ArrayField(models.CharField(Message, default='testmsg', max_length=255), default=list)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -114,7 +112,6 @@ class Like(models.Model):
 
 class Report(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    reason = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

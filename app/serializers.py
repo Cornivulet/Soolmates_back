@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import User, Message, Match
+from .models import User, Message, Match, Like
 
 
 # Serializer for User model
@@ -60,8 +60,13 @@ class MeSerializer(serializers.ModelSerializer):
             if (not self.partial or required_field in data) and data[required_field] == '':
                 raise serializers.ValidationError(required_field + ' is required')
 
-        if (not self.partial or 'lf_age_to' in data) and data['lf_age_to'] < data['lf_age_from']:
-            raise serializers.ValidationError("Age to must be greater than age from")
+        # if 'lf_age_to' in data and 'lf_age_from' not in data:
+        #     raise serializers.ValidationError('lf_age_from is required')
+        # if 'lf_age_from' in data and 'lf_age_to' not in data:
+        #     raise serializers.ValidationError('lf_age_to is required')
+
+        # if ('lf_age_to' in data and 'lf_age_from' in data) and data['lf_age_to'] < data['lf_age_from']:
+        #     raise serializers.ValidationError("Age to must be greater than age from")
 
         if (not self.partial or 'age' in data) and data['age'] <= 18:
             raise serializers.ValidationError('Age cannot be inferior than 18')
@@ -89,14 +94,14 @@ class MatchSerializer(serializers.ModelSerializer):
         model = Match
         fields = ('id', 'user', 'match_user')
 
-    def get_last_message(self, obj: Match):
-        lm = Message.objects.latest('created_at')
-        if lm is None:
-            return []
-        return lm
-
 
 class AvatarSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('image',)
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = ('id', 'user_id', 'user_target_id')

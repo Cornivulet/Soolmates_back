@@ -1,0 +1,1 @@
+web: gunicorn Soolmates_back.wsgi

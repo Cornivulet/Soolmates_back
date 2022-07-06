@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-upkq_=z8xzyv*38uo$61%m%3d-=j8xdby*#w^y&xskil*zdn0w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['soolmates.herokuapp.com', 'localhost']
 
 # Application definition
 
@@ -182,9 +182,11 @@ MEDIA_URL = '/media/'
 # Configuration part for allowing CORS
 # CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://soolmates.herokuapp.com'
 ]
 FRONTEND_HOST = 'http://localhost:3000'
+DEPLOYMENT_HOST = 'https://soolmates.herokuapp.com'
 
 # Configuration part for sending emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

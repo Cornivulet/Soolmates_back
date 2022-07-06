@@ -39,7 +39,7 @@ class RegisterView(APIView):
     def send_verification_mail(self, user, verif_token):
         email_subject = 'Soolmates - Vérifiez votre compte'
         html_message = render_to_string('activation_mail.html',
-                                        {'url': settings.FRONTEND_HOST + '/verify/' + verif_token})
+                                        {'url': settings.DEPLOYMENT_HOST + '/verify/' + verif_token})
         send_mail(
             subject=email_subject,
             html_message=html_message,
@@ -222,7 +222,7 @@ class ForgotPasswordView(APIView):
             raise AuthenticationFailed('User not found')
         html_message = render_to_string('forgot_password.html',
                                         {
-                                            'url': settings.FRONTEND_HOST + '/reset-password/' + reset_password_token})
+                                            'url': settings.DEPLOYMENT_HOST + '/reset-password/' + reset_password_token})
         send_mail(subject='Nouveau mot de passe',
                   message='',
                   from_email=settings.EMAIL_HOST_USER,

@@ -110,11 +110,6 @@ class Like(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class Report(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
 @receiver(post_save, sender=Like)
 def if_both_like_generate_match(instance, created, **kwargs):
     if created:

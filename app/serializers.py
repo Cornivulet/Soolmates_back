@@ -68,7 +68,7 @@ class MeSerializer(serializers.ModelSerializer):
         # if ('lf_age_to' in data and 'lf_age_from' in data) and data['lf_age_to'] < data['lf_age_from']:
         #     raise serializers.ValidationError("Age to must be greater than age from")
 
-        if (not self.partial or 'age' in data) and data['age'] <= 18:
+        if (not self.partial or 'age' in data) and data['age'] < 18:
             raise serializers.ValidationError('Age cannot be inferior than 18')
         return data
 
